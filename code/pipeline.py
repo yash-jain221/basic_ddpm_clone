@@ -2,6 +2,8 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from ddpm import DDPMSampler
+import logging
+logging.basicConfig(level=logging.INFO)
 
 WIDTH = 512
 HEIGHT = 512
@@ -115,6 +117,7 @@ def generate(
         diffusion.to(device)
 
         timesteps = tqdm(sampler.timesteps)
+        latent_timesteps = []
         for i, timestep in enumerate(timesteps):
             # (1, 320)
             time_embedding = get_time_embedding(timestep).to(device)
@@ -136,21 +139,39 @@ def generate(
 
             # (Batch_Size, 4, Latents_Height, Latents_Width) -> (Batch_Size, 4, Latents_Height, Latents_Width)
             latents = sampler.step(timestep, latents, model_output)
+            latent_timesteps.append(latents)
 
         to_idle(diffusion)
 
         decoder = models["decoder"]
         decoder.to(device)
+        logging.info(sum(p.numel() for p in decoder.parameters()))  # Should be > 0
+        logging.info(next(decoder.parameters()).mean())
         # (Batch_Size, 4, Latents_Height, Latents_Width) -> (Batch_Size, 3, Height, Width)
-        images = decoder(latents)
-        to_idle(decoder)
+        images = []
+        for latents in latent_timesteps:
+        
+            image = decoder(latents)
+            logging.info(f"DECODED raw image min: {image.min().item()} max: {image.max().item()} shape: {image.shape}")
 
-        images = rescale(images, (-1, 1), (0, 255), clamp=True)
-        # (Batch_Size, Channel, Height, Width) -> (Batch_Size, Height, Width, Channel)
-        images = images.permute(0, 2, 3, 1)
-        images = images.to("cpu", torch.uint8).numpy()
-        return images[0]
-    
+            # Rescale safely
+            # image = torch.clamp((image + 1) / 2, 0, 1)  # if range was [-1, 1]
+            # image = (image * 255).to(torch.uint8)
+            image = rescale(image, (-1, 1), (0, 255), clamp=True)
+            # (Batch_Size, Channel, Height, Width) -> (Batch_Size, Height, Width, Channel)
+            # image = image.permute(0, 2, 3, 1).to("cpu")  # (B, H, W, C)
+            image = image.permute(0, 2, 3, 1)
+            image = image.to("cpu", torch.uint8)
+            # Rearrange for visualization
+            images.append(image)
+
+        to_idle(decoder)
+            # print(type(image))
+        return images
+
+        # to_idle(diffusion)
+        # to_idle(decoder)
+
 def rescale(x, old_range, new_range, clamp=False):
     old_min, old_max = old_range
     new_min, new_max = new_range
