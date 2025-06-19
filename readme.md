@@ -1,4 +1,4 @@
-#LatentCanvas
+# 🌀 LatentCanvas
 
 **Interactive latent diffusion playground** where users can generate and visualize images step-by-step from text prompts, powered by a custom UNet‑CLIP‑VAE pipeline and a Streamlit-based UI.
 
