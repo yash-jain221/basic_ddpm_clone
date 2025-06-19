@@ -55,7 +55,7 @@ class DDPMSampler:
         self.start_step = start_step
 
     def step(self, timestep: int, latents: torch.Tensor, model_output: torch.Tensor):
-        t = timestep
+        t = int(timestep)
         prev_t = self._get_previous_timestep(t)
 
         # 1. compute alphas, betas
@@ -98,6 +98,7 @@ class DDPMSampler:
         original_samples: torch.FloatTensor,
         timesteps: torch.IntTensor,
     ) -> torch.FloatTensor:
+        
         alphas_cumprod = self.alphas_cumprod.to(device=original_samples.device, dtype=original_samples.dtype)
         timesteps = timesteps.to(original_samples.device)
 

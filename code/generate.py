@@ -34,12 +34,12 @@ st.sidebar.header("Generation Settings")
 num_inference_steps = st.sidebar.slider("Inference Steps", 20, 200, 75, step=5)
 seed = st.sidebar.slider("Random Seed", 0, 9999, 42)
 prompt = st.text_input("Prompt")
-sampler = st.sidebar.selectbox("Sampler", options=["ddpm"])  # Add more as supported
+sampler = st.sidebar.selectbox("Sampler", options=["DDPM", "DDIM"])  # Add more as supported
 replay = st.sidebar.button("Replay Animation")
 save = st.sidebar.button("Save Final Image")
 generate = st.button("Generate")
 
-sampler = "ddpm"
+# sampler = st.sidebar.button("Save Final Image")
 # Higher values means more noise will be added to the input image, so the result will further from the input image.
 # Lower values means less noise is added to the input image, so output will be closer to the input image.
 strength = 0.7
@@ -109,10 +109,29 @@ if replay and st.session_state.decoded_images:
         output.image(img, caption=f"Step {idx}", use_container_width=True)
         time.sleep(0.1)
 
-# ---- SLIDER VIEW ----
+
+
 if st.session_state.decoded_images:
-    step = st.slider("View Step", 0, len(st.session_state.decoded_images) - 1)
-    output.image(st.session_state.decoded_images[step], caption=f"Step {step}")
+    if "step_slider" not in st.session_state:
+        st.session_state.step_slider = 0
+
+    st.session_state.step_slider = st.slider(
+        "View Step",
+        0,
+        len(st.session_state.decoded_images) - 1,
+        value=st.session_state.step_slider,
+        key="slider_step"
+    )
+    
+    output.image(
+        st.session_state.decoded_images[st.session_state.step_slider],
+        caption=f"Step {st.session_state.step_slider}"
+    )
+
+# # ---- SLIDER VIEW ----
+# if st.session_state.decoded_images:
+#     step = st.slider("View Step", 0, len(st.session_state.decoded_images) - 1)
+#     output.image(st.session_state.decoded_images[step], caption=f"Step {step}")
 
 # ---- SAVE IMAGE ----
 if save and st.session_state.generation_complete:

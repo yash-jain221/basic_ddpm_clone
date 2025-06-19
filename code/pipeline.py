@@ -2,6 +2,7 @@ import torch
 import numpy as np
 from tqdm import tqdm
 from ddpm import DDPMSampler
+from ddim import DDIMSampler
 import logging
 logging.basicConfig(level=logging.INFO)
 
@@ -17,7 +18,7 @@ def generate(
     strength=0.8,
     do_cfg=True,
     cfg_scale=7.5,
-    sampler_name="ddpm",
+    sampler_name="DDPM",
     n_inference_steps=50,
     models={},
     seed=None,
@@ -74,11 +75,14 @@ def generate(
             context = clip(tokens)
         to_idle(clip)
 
-        if sampler_name == "ddpm":
+        if sampler_name == "DDPM":
             sampler = DDPMSampler(generator)
             sampler.set_inference_timesteps(n_inference_steps)
+        elif sampler_name == "DDIM":
+            sampler = DDIMSampler(generator)
+            sampler.set_inference_timesteps(n_inference_steps)  
         else:
-            raise ValueError("Unknown sampler value %s. ")
+            raise ValueError("Unknown sampler value %s.")
 
         latents_shape = (1, 4, LATENTS_HEIGHT, LATENTS_WIDTH)
 
@@ -137,8 +141,13 @@ def generate(
                 output_cond, output_uncond = model_output.chunk(2)
                 model_output = cfg_scale * (output_cond - output_uncond) + output_uncond
 
+            # if sampler_name=="DDIM":
+            #     stochasticity = 0
+            # else:
+            #     stochasticity = 1
+
             # (Batch_Size, 4, Latents_Height, Latents_Width) -> (Batch_Size, 4, Latents_Height, Latents_Width)
-            latents = sampler.step(timestep, latents, model_output)
+            latents = sampler.step(timestep.item(), latents, model_output)
             latent_timesteps.append(latents)
 
         to_idle(diffusion)
